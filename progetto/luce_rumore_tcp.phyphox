@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phyphox version="1.7" locale="it">
+
+    <title>Luce e Rumore</title>
+    <category>Esperimenti Custom</category>
+    <description>Misura luce (lux) e livello sonoro (dB) e invia i dati via HTTP POST al server Python sul PC. Sostituire SERVER_IP con l indirizzo IP del PC.</description>
+
+    <data-containers>
+        <container size="1000" static="false">luce_raw</container>
+        <container size="1000" static="false">luce_t</container>
+        <container size="4800" static="false">audio_raw</container>
+        <container size="4800" static="false">audio_sq</container>
+        <container size="1"    static="false">audio_avg</container>
+        <container size="1"    static="false">db_val</container>
+        <container size="1000" static="false">db_buf</container>
+        <container size="1000" static="false">db_t</container>
+    </data-containers>
+
+    <input>
+        <sensor type="light" rate="5">
+            <output component="x">luce_raw</output>
+            <output component="t">luce_t</output>
+        </sensor>
+        <audio rate="48000">
+            <output>audio_raw</output>
+        </audio>
+    </input>
+
+    <analysis sleep="0.2">
+        <multiply>
+            <input>audio_raw</input>
+            <input>audio_raw</input>
+            <output>audio_sq</output>
+        </multiply>
+        <average>
+            <input>audio_sq</input>
+            <output as="average">audio_avg</output>
+        </average>
+        <formula formula="10*log([1])">
+            <input>audio_avg</input>
+            <output>db_val</output>
+        </formula>
+        <append>
+            <input>db_buf</input>
+            <input>db_val</input>
+            <output>db_buf</output>
+        </append>
+        <timer>
+            <output>db_t</output>
+        </timer>
+    </analysis>
+
+    <views>
+        <view label="Grafici">
+            <graph label="Luminosita" labelX="Tempo (s)" labelY="Lux"
+                   timeOnX="true" lineWidth="2" color="#FFD700" partialUpdate="true">
+                <input axis="x">luce_t</input>
+                <input axis="y">luce_raw</input>
+            </graph>
+            <graph label="Livello Sonoro" labelX="Tempo (s)" labelY="dB"
+                   timeOnX="true" lineWidth="2" color="#00BFFF" partialUpdate="true">
+                <input axis="x">db_t</input>
+                <input axis="y">db_buf</input>
+            </graph>
+        </view>
+        <view label="Valori">
+            <value label="Luminosita" size="2" precision="1" unit="lux" color="#FFD700">
+                <input>luce_raw</input>
+            </value>
+            <value label="Livello Sonoro" size="2" precision="1" unit="dB" color="#00BFFF">
+                <input>db_val</input>
+            </value>
+        </view>
+    </views>
+
+    <export>
+        <set name="Dati">
+            <data name="t_luce">luce_t</data>
+            <data name="luce">luce_raw</data>
+            <data name="t_rumore">db_t</data>
+            <data name="rumore">db_buf</data>
+        </set>
+    </export>
+
+    <network>
+        <connection service="http/post"
+                    address="http://SERVER_IP:8080/data"
+                    conversion="none"
+                    interval="1"
+                    privacy="https://phyphox.org/privacy-policy/">
+            <send id="t"      keep="false">luce_t</send>
+            <send id="luce"   keep="false">luce_raw</send>
+            <send id="rumore" keep="false">db_buf</send>
+        </connection>
+    </network>
+
+</phyphox>
